@@ -1,4 +1,4 @@
-import type { Route } from "./+types/paso-1.servicio";
+import type { Route } from "./+types/cotizador.paso-1.servicio";
 import { Form, useActionData } from "react-router";
 
 // loader (por ahora sin datos reales)

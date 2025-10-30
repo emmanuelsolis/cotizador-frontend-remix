@@ -8,7 +8,7 @@ export default function CotizadorInicio() {
         generar una cotización detallada de nuestros servicios digitales.
       </p>
       <Link
-        to="paso-1.servicio"
+        to="/cotizador/paso-1.servicio"
         className="inline-block rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90"
       >
         Iniciar Cotización →
