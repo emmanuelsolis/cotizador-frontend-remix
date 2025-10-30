@@ -1,9 +1,9 @@
 import type { Route } from "./+types/cotizador.paso-1.servicio";
-import { Form, Link, useActionData } from "react-router";
+import { Form, Link, useActionData, data } from "react-router";
 
 // loader (por ahora sin datos reales)
 export async function loader({ request }: Route.LoaderArgs) {
-  return {};
+  return data({});
 }
 
 // action (recibe datos del formulario)
@@ -12,10 +12,10 @@ export async function action({ request }: Route.ActionArgs) {
   const servicio = formData.get("servicio");
   
   if (!servicio) {
-    return { ok: false, error: "Selecciona un servicio" };
+    return data({ ok: false, error: "Selecciona un servicio" });
   }
   
-  return { ok: true, servicio };
+  return data({ ok: true, servicio });
 }
 
 export default function Paso1Servicio() {
@@ -57,19 +57,19 @@ export default function Paso1Servicio() {
               : "bg-red-50 text-red-700"
           }`}
         >
-          {actionData.ok ? (
+          {actionData.ok && "servicio" in actionData ? (
             <>
               Servicio seleccionado: {actionData.servicio}.{" "}
               <Link
-                to="../paso-2.parametros"
+                to="/cotizador/paso-2.parametros"
                 className="underline font-medium"
               >
                 Ir al Paso 2 →
               </Link>
             </>
-          ) : (
+          ) : "error" in actionData ? (
             actionData.error
-          )}
+          ) : null}
         </div>
       )}
     </div>
