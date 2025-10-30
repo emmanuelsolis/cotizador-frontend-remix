@@ -1,14 +1,14 @@
 import type { Route } from "./+types/cotizador.paso-2.parametros";
-import { Form, Link, useActionData } from "react-router";
+import { Form, Link, useActionData, data } from "react-router";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
   // En futuro: traer datos desde Supabase
   // Por ahora, devolvemos opciones simuladas:
-  return {
+  return data({
     plazos: ["1 mes", "3 meses", "6 meses"],
     alcances: ["Básico", "Profesional", "Empresarial"],
-  };
+  });
 }
 
 // ---------------- Action -----------------
@@ -19,10 +19,10 @@ export async function action({ request }: Route.ActionArgs) {
   const notas = formData.get("notas")?.toString().trim();
 
   if (!plazo || !alcance) {
-    return { ok: false, error: "Selecciona todas las opciones requeridas." };
+    return data({ ok: false, error: "Selecciona todas las opciones requeridas." });
   }
 
-  return { ok: true, datos: { plazo, alcance, notas } };
+  return data({ ok: true, datos: { plazo, alcance, notas } });
 }
 
 // ---------------- Component -----------------
@@ -76,7 +76,7 @@ export default function Paso2Parametros() {
 
         <div className="flex justify-between items-center pt-4">
           <Link
-            to="../paso-1.servicio"
+            to="/cotizador/paso-1.servicio"
             className="rounded-md bg-slate-200 px-4 py-2 text-slate-700 hover:bg-slate-300"
           >
             ← Anterior
@@ -98,9 +98,11 @@ export default function Paso2Parametros() {
               : "bg-red-50 text-red-700"
           }`}
         >
-          {actionData.ok
+          {actionData.ok && "datos" in actionData
             ? `Datos recibidos: ${actionData.datos.plazo}, ${actionData.datos.alcance}`
-            : actionData.error}
+            : "error" in actionData
+            ? actionData.error
+            : null}
         </div>
       )}
     </div>
