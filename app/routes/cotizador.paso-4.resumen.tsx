@@ -1,5 +1,5 @@
 import type { Route } from "./+types/cotizador.paso-4.resumen";
-import { Form, Link, useLoaderData, useActionData, data } from "react-router";
+import { Form, Link, useLoaderData, useActionData, data, redirect } from "react-router";
 
 // ---------- Loader ----------
 export async function loader({ request }: Route.LoaderArgs) {
@@ -31,7 +31,8 @@ export async function action({ request }: Route.ActionArgs) {
   const confirm = formData.get("confirmar");
   if (confirm === "true") {
     // en el futuro guardará la cotización en Supabase / PDF
-    return data({ ok: true, mensaje: "Cotización confirmada (simulada)" });
+    // Redirigir al paso 5
+    return redirect("/cotizador/paso-5.confirmacion");
   }
   return data({ ok: false });
 }
@@ -39,7 +40,6 @@ export async function action({ request }: Route.ActionArgs) {
 // ---------- Componente ----------
 export default function Paso4Resumen() {
   const { resumenMock, total } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
 
   return (
     <div className="space-y-6">
@@ -93,12 +93,6 @@ export default function Paso4Resumen() {
           Confirmar y continuar →
         </button>
       </Form>
-
-      {actionData?.ok && "mensaje" in actionData && (
-        <div className="rounded-md bg-green-50 p-3 text-green-700 text-sm">
-          {String(actionData.mensaje)}
-        </div>
-      )}
     </div>
   );
 }
