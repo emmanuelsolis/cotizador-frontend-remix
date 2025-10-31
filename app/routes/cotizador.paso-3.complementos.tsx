@@ -1,5 +1,5 @@
 import type { Route } from "./+types/cotizador.paso-3.complementos";
-import { Form, Link, useActionData, data } from "react-router";
+import { Form, Link, useActionData, data, redirect } from "react-router";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
@@ -19,18 +19,15 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const seleccion = formData.getAll("complementos");
 
-  if (seleccion.length === 0) {
-    return data({ ok: false, error: "Selecciona al menos un complemento o continúa sin elegir." });
-  }
-
-  // Simulación de guardado temporal
-  return data({ ok: true, seleccion });
+  // Simulación de guardado temporal (en futuro: guardar en Supabase)
+  // Por ahora permitimos continuar sin selección o con selección
+  
+  // Redirigir al paso 4
+  return redirect("/cotizador/paso-4.resumen");
 }
 
 // ---------------- Component -----------------
 export default function Paso3Complementos() {
-  const actionData = useActionData<typeof action>();
-
   return (
     <div className="space-y-6">
       <Form method="post" className="space-y-4">
@@ -75,22 +72,6 @@ export default function Paso3Complementos() {
           </button>
         </div>
       </Form>
-
-      {actionData && (
-        <div
-          className={`rounded-md p-3 text-sm ${
-            actionData.ok
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {actionData.ok && "seleccion" in actionData
-            ? `Complementos seleccionados: ${actionData.seleccion.join(", ")}`
-            : "error" in actionData
-            ? actionData.error
-            : null}
-        </div>
-      )}
     </div>
   );
 }
