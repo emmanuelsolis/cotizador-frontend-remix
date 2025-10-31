@@ -98,11 +98,19 @@ export default function Paso2Parametros() {
               : "bg-red-50 text-red-700"
           }`}
         >
-          {actionData.ok && "datos" in actionData
-            ? `Datos recibidos: ${actionData.datos.plazo}, ${actionData.datos.alcance}`
-            : "error" in actionData
-            ? actionData.error
-            : null}
+          {actionData.ok && "datos" in actionData ? (
+            <>
+              Datos recibidos: {actionData.datos.plazo}, {actionData.datos.alcance}.{" "}
+              <Link
+                to="/cotizador/paso-3.complementos"
+                className="underline font-medium"
+              >
+                Ir al Paso 3 →
+              </Link>
+            </>
+          ) : "error" in actionData ? (
+            actionData.error
+          ) : null}
         </div>
       )}
     </div>
