@@ -3,8 +3,12 @@ import { Welcome } from "../welcome/welcome";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Cotizador Web Inteligente" },
+    {
+      name: "description",
+      content:
+        "Gestiona cotizaciones con un panel moderno, indicadores clave y una experiencia optimizada para ventas.",
+    },
   ];
 }
 
