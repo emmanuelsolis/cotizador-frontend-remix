@@ -1,65 +1,73 @@
 import type { Route } from "./+types/cotizador.paso-2.parametros";
-import { Form, Link, useActionData, data } from "react-router";
+import { Form, Link, useActionData, useLoaderData, data, redirect } from "react-router";
+import { getPaquetes } from "~/services/api";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
-  // En futuro: traer datos desde Supabase
-  // Por ahora, devolvemos opciones simuladas:
-  return data({
-    plazos: ["1 mes", "3 meses", "6 meses"],
-    alcances: ["Básico", "Profesional", "Empresarial"],
-  });
+  try {
+    const paquetes = await getPaquetes();
+    return data({ paquetes, error: null });
+  } catch (error) {
+    console.error("Error cargando paquetes:", error);
+    return data({ paquetes: [], error: "Error cargando paquetes" });
+  }
 }
 
 // ---------------- Action -----------------
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const plazo = formData.get("plazo");
-  const alcance = formData.get("alcance");
+  const paqueteId = formData.get("paquete");
   const notas = formData.get("notas")?.toString().trim();
 
-  if (!plazo || !alcance) {
-    return data({ ok: false, error: "Selecciona todas las opciones requeridas." });
+  if (!paqueteId) {
+    return data({ ok: false, error: "Selecciona un paquete." });
   }
 
-  return data({ ok: true, datos: { plazo, alcance, notas } });
+  // Redirigir al siguiente paso
+  return redirect("/cotizador/paso-3.complementos");
 }
 
 // ---------------- Component -----------------
 export default function Paso2Parametros() {
+  const { paquetes, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      
       <Form method="post" className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Plazo de entrega estimado
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Selecciona un paquete
           </label>
-          <select
-            name="plazo"
-            className="mt-1 w-full rounded-md border border-slate-300 p-2"
-          >
-            <option value="">Selecciona un plazo</option>
-            <option value="1 mes">1 mes</option>
-            <option value="3 meses">3 meses</option>
-            <option value="6 meses">6 meses</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Alcance del proyecto
-          </label>
-          <select
-            name="alcance"
-            className="mt-1 w-full rounded-md border border-slate-300 p-2"
-          >
-            <option value="">Selecciona un alcance</option>
-            <option value="Básico">Básico</option>
-            <option value="Profesional">Profesional</option>
-            <option value="Empresarial">Empresarial</option>
-          </select>
+          <div className="space-y-3">
+            {paquetes.map((paquete) => (
+              <label
+                key={paquete.id}
+                className="flex items-start p-4 border border-slate-300 rounded-md hover:bg-slate-50 cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  name="paquete"
+                  value={paquete.id}
+                  className="mt-1 mr-3"
+                  required
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-slate-900">{paquete.nombre}</div>
+                  <div className="text-sm text-slate-600 mt-1">{paquete.descripcion}</div>
+                  <div className="text-lg font-semibold text-primary mt-2">
+                    ${paquete.precio_base}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -90,27 +98,9 @@ export default function Paso2Parametros() {
         </div>
       </Form>
 
-      {actionData && (
-        <div
-          className={`rounded-md p-3 text-sm ${
-            actionData.ok
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {actionData.ok && "datos" in actionData ? (
-            <>
-              Datos recibidos: {actionData.datos.plazo}, {actionData.datos.alcance}.{" "}
-              <Link
-                to="/cotizador/paso-3.complementos"
-                className="underline font-medium"
-              >
-                Ir al Paso 3 →
-              </Link>
-            </>
-          ) : "error" in actionData ? (
-            actionData.error
-          ) : null}
+      {actionData && !actionData.ok && "error" in actionData && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {actionData.error}
         </div>
       )}
     </div>
