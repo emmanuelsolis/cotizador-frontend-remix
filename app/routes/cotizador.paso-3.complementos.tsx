@@ -1,47 +1,54 @@
 import type { Route } from "./+types/cotizador.paso-3.complementos";
-import { Form, Link, useActionData, useLoaderData, useNavigate, data, redirect } from "react-router";
+import { Form, Link, useLoaderData, data, redirect } from "react-router";
 import { getComplementos } from "~/services/api";
 import { saveCotizacionData } from "~/utils/cotizacionStorage";
+import { useEffect } from "react";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const servicioId = url.searchParams.get("servicioId");
+  const paqueteId = url.searchParams.get("paqueteId");
+  const notas = url.searchParams.get("notas") || "";
+  
   try {
     const complementos = await getComplementos();
-    return data({ complementos, error: null });
+    return data({ complementos, error: null, servicioId, paqueteId, notas });
   } catch (error) {
     console.error("Error cargando complementos:", error);
-    return data({ complementos: [], error: "Error cargando complementos" });
+    return data({ complementos: [], error: "Error cargando complementos", servicioId, paqueteId, notas });
   }
 }
 
 // ---------------- Action -----------------
 export async function action({ request }: Route.ActionArgs) {
-  const formData = await request.formData();
-  const seleccion = formData.getAll("complementos");
-
-  // Simulación de guardado temporal (en futuro: guardar en Supabase)
-  // Por ahora permitimos continuar sin selección o con selección
+  const url = new URL(request.url);
+  const servicioId = url.searchParams.get("servicioId");
+  const paqueteId = url.searchParams.get("paqueteId");
+  const notas = url.searchParams.get("notas") || "";
   
-  // Redirigir al paso 4
-  return redirect("/cotizador/paso-4.resumen");
+  const formData = await request.formData();
+  const complementoIds = formData.getAll("complementos").map(id => Number(id));
+
+  // Guardar TODO en sessionStorage antes de redirect (en servidor, simulado)
+  // La verdadera persistencia la haremos en el loader de paso-4
+  return redirect(`/cotizador/paso-4.resumen?servicioId=${servicioId}&paqueteId=${paqueteId}&notas=${encodeURIComponent(notas)}&complementos=${complementoIds.join(',')}`);
 }
 
 // ---------------- Component -----------------
 export default function Paso3Complementos() {
-  const { complementos, error } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const complementoIds = formData.getAll("complementos").map(id => Number(id));
-    
-    // Guardar en sessionStorage
-    saveCotizacionData({ complementoIds });
-    
-    // Navegar al siguiente paso
-    navigate("/cotizador/paso-4.resumen");
-  };
+  const { complementos, error, servicioId, paqueteId, notas } = useLoaderData<typeof loader>();
+  
+  // Guardar datos anteriores en sessionStorage
+  useEffect(() => {
+    if (servicioId && paqueteId) {
+      saveCotizacionData({ 
+        servicioId: Number(servicioId),
+        paqueteId: Number(paqueteId),
+        notas: notas || ""
+      });
+    }
+  }, [servicioId, paqueteId, notas]);
   
   return (
     <div className="space-y-6">
@@ -51,7 +58,7 @@ export default function Paso3Complementos() {
         </div>
       )}
       
-      <Form method="post" onSubmit={handleSubmit} className="space-y-4">
+      <Form method="post" className="space-y-4">
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium text-slate-700">
             Selecciona complementos opcionales

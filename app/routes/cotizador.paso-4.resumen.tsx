@@ -1,33 +1,59 @@
 import type { Route } from "./+types/cotizador.paso-4.resumen";
 import { Form, Link, useLoaderData, data, redirect } from "react-router";
 import { getServicio, getPaquete, getComplemento } from "~/services/api";
-import { getCotizacionData } from "~/utils/cotizacionStorage";
+import { saveCotizacionData, getCotizacionData } from "~/utils/cotizacionStorage";
+import { useEffect } from "react";
+
+// Helper para parsear precios de forma segura
+function safeParsePrice(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0;
+  const parsed = typeof value === 'string' ? parseFloat(value) : value;
+  return isNaN(parsed) ? 0 : parsed;
+}
 
 // ---------- Loader ----------
 export async function loader({ request }: Route.LoaderArgs) {
-  const cotizacionData = getCotizacionData();
+  const url = new URL(request.url);
+  const servicioId = url.searchParams.get("servicioId");
+  const paqueteId = url.searchParams.get("paqueteId");
+  const notas = url.searchParams.get("notas") || "";
+  const complementosParam = url.searchParams.get("complementos") || "";
+  const complementoIds = complementosParam ? complementosParam.split(',').map(Number).filter(Boolean) : [];
+  
+  console.log("Paso 4 Loader - URL params:", { servicioId, paqueteId, notas, complementoIds });
+  
+  // Si no hay params en URL, intentar leer de sessionStorage (solo en cliente)
+  if (typeof window !== 'undefined' && (!servicioId || !paqueteId)) {
+    const savedData = getCotizacionData();
+    console.log("Paso 4 Loader - SessionStorage data:", savedData);
+    
+    if (savedData.servicioId && savedData.paqueteId) {
+      // Redirigir con los datos de sessionStorage en la URL
+      const params = new URLSearchParams({
+        servicioId: String(savedData.servicioId),
+        paqueteId: String(savedData.paqueteId),
+        notas: savedData.notas || "",
+        complementos: (savedData.complementoIds || []).join(',')
+      });
+      throw redirect(`/cotizador/paso-4.resumen?${params}`);
+    }
+  }
   
   try {
     // Obtener datos completos de cada selección
-    const servicio = cotizacionData.servicioId 
-      ? await getServicio(cotizacionData.servicioId) 
-      : null;
-    
-    const paquete = cotizacionData.paqueteId
-      ? await getPaquete(cotizacionData.paqueteId)
-      : null;
-    
-    const complementos = cotizacionData.complementoIds && cotizacionData.complementoIds.length > 0
-      ? await Promise.all(
-          cotizacionData.complementoIds.map(id => getComplemento(id))
-        )
+    const servicio = servicioId ? await getServicio(Number(servicioId)) : null;
+    const paquete = paqueteId ? await getPaquete(Number(paqueteId)) : null;
+    const complementos = complementoIds.length > 0
+      ? await Promise.all(complementoIds.map(id => getComplemento(id)))
       : [];
     
-    // Calcular total
-    const precioServicio = servicio ? parseFloat(servicio.precio_base) : 0;
-    const precioPaquete = paquete ? parseFloat(paquete.precio_base) : 0;
+    console.log("Paso 4 Loader - API data:", { servicio: servicio?.nombre, paquete: paquete?.nombre, complementosCount: complementos.length });
+    
+    // Calcular total con parseo seguro
+    const precioServicio = servicio ? safeParsePrice(servicio.precio_base) : 0;
+    const precioPaquete = paquete ? safeParsePrice(paquete.precio_base) : 0;
     const precioComplementos = complementos.reduce(
-      (sum, c) => sum + parseFloat(c.precio), 
+      (sum, c) => sum + safeParsePrice(c.precio), 
       0
     );
     const total = precioServicio + precioPaquete + precioComplementos;
@@ -36,9 +62,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       servicio, 
       paquete, 
       complementos, 
-      notas: cotizacionData.notas || "",
+      notas,
       total,
-      error: null 
+      error: null,
+      // Pasar IDs para guardar en sessionStorage
+      servicioId: servicioId ? Number(servicioId) : null,
+      paqueteId: paqueteId ? Number(paqueteId) : null,
+      complementoIds
     });
   } catch (error) {
     console.error("Error cargando resumen:", error);
@@ -48,7 +78,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       complementos: [], 
       notas: "",
       total: 0,
-      error: "Error al cargar el resumen" 
+      error: "Error al cargar el resumen",
+      servicioId: null,
+      paqueteId: null,
+      complementoIds: []
     });
   }
 }
@@ -67,7 +100,20 @@ export async function action({ request }: Route.ActionArgs) {
 
 // ---------- Componente ----------
 export default function Paso4Resumen() {
-  const { servicio, paquete, complementos, notas, total, error } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const { servicio, paquete, complementos, notas, total, error, servicioId, paqueteId, complementoIds } = loaderData;
+  
+  // Guardar todos los datos en sessionStorage cuando el componente se monta
+  useEffect(() => {
+    if (servicioId && paqueteId) {
+      saveCotizacionData({ 
+        servicioId,
+        paqueteId,
+        complementoIds: complementoIds || [],
+        notas: notas || ""
+      });
+    }
+  }, [servicioId, paqueteId, complementoIds, notas]);
 
   if (error) {
     return (
@@ -116,7 +162,7 @@ export default function Paso4Resumen() {
               <p className="text-slate-900">{servicio.nombre}</p>
               <p className="text-sm text-slate-600">{servicio.descripcion}</p>
             </div>
-            <p className="text-lg font-semibold text-primary">${parseFloat(servicio.precio_base).toLocaleString()}</p>
+            <p className="text-lg font-semibold text-primary">${safeParsePrice(servicio.precio_base).toLocaleString()}</p>
           </div>
         </div>
 
@@ -130,7 +176,7 @@ export default function Paso4Resumen() {
               <p className="text-slate-900">{paquete.nombre}</p>
               <p className="text-sm text-slate-600">{paquete.descripcion}</p>
             </div>
-            <p className="text-lg font-semibold text-primary">${parseFloat(paquete.precio_base).toLocaleString()}</p>
+            <p className="text-lg font-semibold text-primary">${safeParsePrice(paquete.precio_base).toLocaleString()}</p>
           </div>
         </div>
 
@@ -150,7 +196,7 @@ export default function Paso4Resumen() {
                       )}
                     </div>
                     <p className="text-sm font-semibold text-slate-700 ml-4">
-                      ${parseFloat(complemento.precio).toLocaleString()}
+                      ${safeParsePrice(complemento.precio).toLocaleString()}
                     </p>
                   </li>
                 ))}

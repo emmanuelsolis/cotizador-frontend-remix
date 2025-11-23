@@ -1,56 +1,50 @@
 import type { Route } from "./+types/cotizador.paso-2.parametros";
-import { Form, Link, useActionData, useLoaderData, useNavigate, data, redirect } from "react-router";
+import { Form, Link, useActionData, useLoaderData, data, redirect, useSearchParams } from "react-router";
 import { getPaquetes } from "~/services/api";
 import { saveCotizacionData } from "~/utils/cotizacionStorage";
+import { useEffect } from "react";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const servicioId = url.searchParams.get("servicioId");
+  
   try {
     const paquetes = await getPaquetes();
-    return data({ paquetes, error: null });
+    return data({ paquetes, error: null, servicioId });
   } catch (error) {
     console.error("Error cargando paquetes:", error);
-    return data({ paquetes: [], error: "Error cargando paquetes" });
+    return data({ paquetes: [], error: "Error cargando paquetes", servicioId });
   }
 }
 
 // ---------------- Action -----------------
 export async function action({ request }: Route.ActionArgs) {
+  const url = new URL(request.url);
+  const servicioId = url.searchParams.get("servicioId");
   const formData = await request.formData();
   const paqueteId = formData.get("paquete");
-  const notas = formData.get("notas")?.toString().trim();
+  const notas = formData.get("notas")?.toString().trim() || "";
 
   if (!paqueteId) {
     return data({ ok: false, error: "Selecciona un paquete." });
   }
 
-  // Redirigir al siguiente paso
-  return redirect("/cotizador/paso-3.complementos");
+  return redirect(`/cotizador/paso-3.complementos?servicioId=${servicioId}&paqueteId=${paqueteId}&notas=${encodeURIComponent(notas)}`);
 }
+
 
 // ---------------- Component -----------------
 export default function Paso2Parametros() {
-  const { paquetes, error } = useLoaderData<typeof loader>();
+  const { paquetes, error, servicioId } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const navigate = useNavigate();
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const paqueteId = formData.get("paquete");
-    const notas = formData.get("notas")?.toString().trim();
-    
-    if (!paqueteId) return;
-    
-    // Guardar en sessionStorage
-    saveCotizacionData({ 
-      paqueteId: Number(paqueteId),
-      notas: notas || ""
-    });
-    
-    // Navegar al siguiente paso
-    navigate("/cotizador/paso-3.complementos");
-  };
+  
+  // Guardar servicioId en sessionStorage cuando llega por URL
+  useEffect(() => {
+    if (servicioId) {
+      saveCotizacionData({ servicioId: Number(servicioId) });
+    }
+  }, [servicioId]);
 
   return (
     <div className="space-y-6">
@@ -60,7 +54,7 @@ export default function Paso2Parametros() {
         </div>
       )}
       
-      <Form method="post" onSubmit={handleSubmit} className="space-y-4">
+      <Form method="post" className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Selecciona un paquete

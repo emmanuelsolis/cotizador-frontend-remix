@@ -1,9 +1,9 @@
 import type { Route } from "./+types/cotizador.paso-1.servicio";
-import { Form, useActionData, useLoaderData, useNavigate, useNavigation, data, redirect } from "react-router";
-import { useEffect } from "react";
+import { Form, useActionData, useLoaderData, useNavigation, data, redirect, useSearchParams } from "react-router";
 import { getServicios } from "~/services/api";
 import { saveCotizacionData } from "~/utils/cotizacionStorage";
 import { LoadingSpinner } from "~/components/Loading";
+import { useEffect } from "react";
 
 // loader - Carga los servicios desde la API
 export async function loader({ request }: Route.LoaderArgs) {
@@ -16,7 +16,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-// action (recibe datos del formulario)
+// action - Valida y redirige con el servicioId en la URL
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const servicioId = formData.get("servicio");
@@ -25,32 +25,15 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: false, error: "Selecciona un servicio" });
   }
   
-  // Guardar en session storage (se maneja en el cliente)
-  // El redirect permite que el navegador maneje el guardado
   return redirect(`/cotizador/paso-2.parametros?servicioId=${servicioId}`);
 }
 
 export default function Paso1Servicio() {
   const { servicios, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const navigate = useNavigate();
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading";
   const isSubmitting = navigation.state === "submitting";
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const servicioId = formData.get("servicio");
-    
-    if (!servicioId) return;
-    
-    // Guardar en sessionStorage
-    saveCotizacionData({ servicioId: Number(servicioId) });
-    
-    // Navegar al siguiente paso
-    navigate("/cotizador/paso-2.parametros");
-  };
 
   return (
     <div className="space-y-6">
@@ -63,7 +46,7 @@ export default function Paso1Servicio() {
       )}
 
       {!isLoading && (
-        <Form method="post" onSubmit={handleSubmit} className="space-y-4">
+        <Form method="post" className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700">
             Selecciona el tipo de servicio
