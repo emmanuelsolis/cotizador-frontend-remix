@@ -1,6 +1,7 @@
 import type { Route } from "./+types/cotizador.paso-3.complementos";
-import { Form, Link, useActionData, useLoaderData, data, redirect } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigate, data, redirect } from "react-router";
 import { getComplementos } from "~/services/api";
+import { saveCotizacionData } from "~/utils/cotizacionStorage";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
@@ -28,6 +29,19 @@ export async function action({ request }: Route.ActionArgs) {
 // ---------------- Component -----------------
 export default function Paso3Complementos() {
   const { complementos, error } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const complementoIds = formData.getAll("complementos").map(id => Number(id));
+    
+    // Guardar en sessionStorage
+    saveCotizacionData({ complementoIds });
+    
+    // Navegar al siguiente paso
+    navigate("/cotizador/paso-4.resumen");
+  };
   
   return (
     <div className="space-y-6">
@@ -37,7 +51,7 @@ export default function Paso3Complementos() {
         </div>
       )}
       
-      <Form method="post" className="space-y-4">
+      <Form method="post" onSubmit={handleSubmit} className="space-y-4">
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium text-slate-700">
             Selecciona complementos opcionales

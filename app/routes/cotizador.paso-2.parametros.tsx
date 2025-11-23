@@ -1,6 +1,7 @@
 import type { Route } from "./+types/cotizador.paso-2.parametros";
-import { Form, Link, useActionData, useLoaderData, data, redirect } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigate, data, redirect } from "react-router";
 import { getPaquetes } from "~/services/api";
+import { saveCotizacionData } from "~/utils/cotizacionStorage";
 
 // ---------------- Loader -----------------
 export async function loader({ request }: Route.LoaderArgs) {
@@ -31,6 +32,25 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Paso2Parametros() {
   const { paquetes, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const paqueteId = formData.get("paquete");
+    const notas = formData.get("notas")?.toString().trim();
+    
+    if (!paqueteId) return;
+    
+    // Guardar en sessionStorage
+    saveCotizacionData({ 
+      paqueteId: Number(paqueteId),
+      notas: notas || ""
+    });
+    
+    // Navegar al siguiente paso
+    navigate("/cotizador/paso-3.complementos");
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +60,7 @@ export default function Paso2Parametros() {
         </div>
       )}
       
-      <Form method="post" className="space-y-4">
+      <Form method="post" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Selecciona un paquete

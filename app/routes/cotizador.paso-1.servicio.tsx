@@ -1,12 +1,15 @@
 import type { Route } from "./+types/cotizador.paso-1.servicio";
-import { Form, useActionData, useLoaderData, data, redirect } from "react-router";
+import { Form, useActionData, useLoaderData, useNavigate, useNavigation, data, redirect } from "react-router";
+import { useEffect } from "react";
 import { getServicios } from "~/services/api";
+import { saveCotizacionData } from "~/utils/cotizacionStorage";
+import { LoadingSpinner } from "~/components/Loading";
 
 // loader - Carga los servicios desde la API
 export async function loader({ request }: Route.LoaderArgs) {
   try {
     const servicios = await getServicios();
-    return data({ servicios });
+    return data({ servicios, error: null });
   } catch (error) {
     console.error("Error cargando servicios:", error);
     return data({ servicios: [], error: "Error al cargar servicios" });
@@ -16,29 +19,51 @@ export async function loader({ request }: Route.LoaderArgs) {
 // action (recibe datos del formulario)
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const servicio = formData.get("servicio");
+  const servicioId = formData.get("servicio");
   
-  if (!servicio) {
+  if (!servicioId) {
     return data({ ok: false, error: "Selecciona un servicio" });
   }
   
-  // Redirigir al siguiente paso
-  return redirect("/cotizador/paso-2.parametros");
+  // Guardar en session storage (se maneja en el cliente)
+  // El redirect permite que el navegador maneje el guardado
+  return redirect(`/cotizador/paso-2.parametros?servicioId=${servicioId}`);
 }
 
 export default function Paso1Servicio() {
   const { servicios, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const navigate = useNavigate();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
+  const isSubmitting = navigation.state === "submitting";
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const servicioId = formData.get("servicio");
+    
+    if (!servicioId) return;
+    
+    // Guardar en sessionStorage
+    saveCotizacionData({ servicioId: Number(servicioId) });
+    
+    // Navegar al siguiente paso
+    navigate("/cotizador/paso-2.parametros");
+  };
 
   return (
     <div className="space-y-6">
-      {error && (
+      {isLoading && <LoadingSpinner message="Cargando servicios..." />}
+      
+      {!isLoading && error && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <Form method="post" className="space-y-4">
+      {!isLoading && (
+        <Form method="post" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700">
             Selecciona el tipo de servicio
@@ -65,13 +90,14 @@ export default function Paso1Servicio() {
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={servicios.length === 0}
+            disabled={servicios.length === 0 || isSubmitting}
             className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continuar →
+            {isSubmitting ? "Guardando..." : "Continuar →"}
           </button>
         </div>
       </Form>
+      )}
 
       {actionData && !actionData.ok && "error" in actionData && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">

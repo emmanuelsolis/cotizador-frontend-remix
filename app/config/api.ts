@@ -10,6 +10,7 @@ export const API_CONFIG = {
     servicios: '/api/servicios/',
     paquetes: '/api/paquetes/',
     complementos: '/api/complementos/',
+    quotes: '/api/quotes/',
   },
   timeout: 10000, // 10 segundos
 };

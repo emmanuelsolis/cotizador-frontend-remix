@@ -79,3 +79,35 @@ export async function getComplementos(): Promise<Complemento[]> {
 export async function getComplemento(id: number): Promise<Complemento> {
   return fetchAPI<Complemento>(getResourceUrl('complementos', id));
 }
+
+/**
+ * Crea una nueva cotización
+ */
+export async function createQuote(quoteData: {
+  cliente_nombre?: string;
+  cliente_email?: string;
+  cliente_telefono?: string;
+  cliente_empresa?: string;
+  servicio_id?: number;
+  paquete_id?: number;
+  complemento_ids?: number[];
+  notas?: string;
+  subtotal: number;
+  descuento?: number;
+  iva?: number;
+  total: number;
+}): Promise<any> {
+  const response = await fetch(getApiUrl('quotes'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(quoteData),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
